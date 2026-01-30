@@ -1,6 +1,11 @@
+// app.js (ES module version using transformers.js for local sentiment classification)
+
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js";
+
 // Global variables
 let reviews = [];
-let apiToken = "";
+let apiToken = ""; // kept for UI compatibility, but not used with local inference
+let sentimentPipeline = null; // transformers.js text-classification pipeline
 
 // DOM elements
 const analyzeBtn = document.getElementById("analyze-btn");
@@ -9,23 +14,55 @@ const sentimentResult = document.getElementById("sentiment-result");
 const loadingElement = document.querySelector(".loading");
 const errorElement = document.getElementById("error-message");
 const apiTokenInput = document.getElementById("api-token");
+const statusElement = document.getElementById("status"); // optional status label for model loading
 
 // Initialize the app
 document.addEventListener("DOMContentLoaded", function () {
-  // Load the TSV file (Papa Parse 활성화)
+  // Load the TSV file (Papa Parse)
   loadReviews();
 
   // Set up event listeners
   analyzeBtn.addEventListener("click", analyzeRandomReview);
   apiTokenInput.addEventListener("change", saveApiToken);
 
-  // Load saved API token if exists
+  // Load saved API token if exists (not used with local inference but kept for UI)
   const savedToken = localStorage.getItem("hfApiToken");
   if (savedToken) {
     apiTokenInput.value = savedToken;
     apiToken = savedToken;
   }
+
+  // Initialize transformers.js sentiment model
+  initSentimentModel();
 });
+
+// Initialize transformers.js text-classification pipeline with a supported model
+async function initSentimentModel() {
+  try {
+    if (statusElement) {
+      statusElement.textContent = "Loading sentiment model...";
+    }
+
+    // Use a transformers.js-supported text-classification model.
+    // Xenova/distilbert-base-uncased-finetuned-sst-2-english is a common choice.
+    sentimentPipeline = await pipeline(
+      "text-classification",
+      "Xenova/distilbert-base-uncased-finetuned-sst-2-english"
+    );
+
+    if (statusElement) {
+      statusElement.textContent = "Sentiment model ready";
+    }
+  } catch (error) {
+    console.error("Failed to load sentiment model:", error);
+    showError(
+      "Failed to load sentiment model. Please check your network connection and try again."
+    );
+    if (statusElement) {
+      statusElement.textContent = "Model load failed";
+    }
+  }
+}
 
 // Load and parse the TSV file using Papa Parse
 function loadReviews() {
@@ -58,7 +95,7 @@ function loadReviews() {
     });
 }
 
-// Save API token to localStorage
+// Save API token to localStorage (UI compatibility; not used with local inference)
 function saveApiToken() {
   apiToken = apiTokenInput.value.trim();
   if (apiToken) {
@@ -77,6 +114,11 @@ function analyzeRandomReview() {
     return;
   }
 
+  if (!sentimentPipeline) {
+    showError("Sentiment model is not ready yet. Please wait a moment.");
+    return;
+  }
+
   const selectedReview =
     reviews[Math.floor(Math.random() * reviews.length)];
 
@@ -89,7 +131,7 @@ function analyzeRandomReview() {
   sentimentResult.innerHTML = ""; // Reset previous result
   sentimentResult.className = "sentiment-result"; // Reset classes
 
-  // Call Hugging Face API
+  // Call local sentiment model (transformers.js)
   analyzeSentiment(selectedReview)
     .then((result) => displaySentiment(result))
     .catch((error) => {
@@ -102,49 +144,23 @@ function analyzeRandomReview() {
     });
 }
 
-// Call Hugging Face API for sentiment analysis
+// Call local transformers.js pipeline for sentiment classification
 async function analyzeSentiment(text) {
-  try {
-    const headers = {};
-
-    if (apiToken) {
-      headers.Authorization = `Bearer ${apiToken}`;
-    }
-
-    // text/plain 으로 순수 텍스트만 보내는 형태 (실험용)
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english",
-      {
-        method: "POST",
-        headers: {
-          ...headers,
-          "Content-Type": "text/plain",
-        },
-        body: text, // JSON.stringify가 아니라 그냥 text
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `API error: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    if (error instanceof TypeError) {
-      // 여전히 여기로 떨어질 가능성이 큼 (CORS)
-      throw new Error(
-        "Failed to call Hugging Face API from the browser. " +
-          "This is caused by CORS. You need a backend proxy server that " +
-          "calls the Hugging Face API on the server side."
-      );
-    }
-    throw error;
+  if (!sentimentPipeline) {
+    throw new Error("Sentiment model is not initialized.");
   }
-}
 
+  // transformers.js text-classification pipeline returns:
+  // [{ label: 'POSITIVE', score: 0.99 }, ...]
+  const output = await sentimentPipeline(text);
+
+  if (!Array.isArray(output) || output.length === 0) {
+    throw new Error("Invalid sentiment output from local model.");
+  }
+
+  // Wrap to match [[{ label, score }]] shape expected by displaySentiment
+  return [output];
+}
 
 // Display sentiment result
 function displaySentiment(result) {
@@ -153,7 +169,7 @@ function displaySentiment(result) {
   let score = 0.5;
   let label = "NEUTRAL";
 
-  // Parse the API response (format: [[{label: 'POSITIVE', score: 0.99}]])
+  // Expected format: [[{label: 'POSITIVE', score: 0.99}]]
   if (
     Array.isArray(result) &&
     result.length > 0 &&
@@ -172,11 +188,13 @@ function displaySentiment(result) {
           ? sentimentData.score
           : 0.5;
 
-      // Determine sentiment
+      // Determine sentiment bucket
       if (label === "POSITIVE" && score > 0.5) {
         sentiment = "positive";
       } else if (label === "NEGATIVE" && score > 0.5) {
         sentiment = "negative";
+      } else {
+        sentiment = "neutral";
       }
     }
   }
@@ -189,7 +207,7 @@ function displaySentiment(result) {
     `;
 }
 
-// Get appropriate icon for sentiment
+// Get appropriate icon for sentiment bucket
 function getSentimentIcon(sentiment) {
   switch (sentiment) {
     case "positive":
