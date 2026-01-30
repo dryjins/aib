@@ -105,28 +105,25 @@ function analyzeRandomReview() {
 // Call Hugging Face API for sentiment analysis
 async function analyzeSentiment(text) {
   try {
-    const headers = {
-      "Content-Type": "application/json",
-    };
+    const headers = {};
 
     if (apiToken) {
       headers.Authorization = `Bearer ${apiToken}`;
     }
 
+    // text/plain 으로 순수 텍스트만 보내는 형태 (실험용)
     const response = await fetch(
       "https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english",
       {
         method: "POST",
-        headers,
-        // HF text-classification 기본 포맷: inputs에 문자열 하나 보내기
-        body: JSON.stringify({
-          inputs: text,
-        }),
+        headers: {
+          ...headers,
+          "Content-Type": "text/plain",
+        },
+        body: text, // JSON.stringify가 아니라 그냥 text
       }
     );
 
-    // CORS 때문에 브라우저가 preflight에서 막히면 여기까지도 못 들어오고
-    // TypeError("Failed to fetch")가 발생합니다.
     if (!response.ok) {
       throw new Error(
         `API error: ${response.status} ${response.statusText}`
@@ -136,16 +133,18 @@ async function analyzeSentiment(text) {
     const result = await response.json();
     return result;
   } catch (error) {
-    // 브라우저 fetch에서 CORS 등 네트워크 계열 에러는 TypeError로 떨어지는 경우가 많습니다.
     if (error instanceof TypeError) {
+      // 여전히 여기로 떨어질 가능성이 큼 (CORS)
       throw new Error(
-        "Failed to call Hugging Face API. This is likely due to CORS restrictions when calling the API directly from the browser. " +
-          "In a real deployment, you need a small backend proxy server that calls the Hugging Face API on the server side."
+        "Failed to call Hugging Face API from the browser. " +
+          "This is caused by CORS. You need a backend proxy server that " +
+          "calls the Hugging Face API on the server side."
       );
     }
     throw error;
   }
 }
+
 
 // Display sentiment result
 function displaySentiment(result) {
