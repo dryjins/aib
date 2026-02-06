@@ -1,5 +1,3 @@
-// ... (Imports and Mermaid setup) ...
-
 /**
  * Retention Policy Designer (Business Logic Simulator)
  * 
@@ -132,14 +130,16 @@ function extractMermaid(instructionText) {
 function calculateMockChurnScore(row) {
     let score = 0.3; // base probability
 
-    if (row.Contract === "Month-to-month") score += 0.4;
-    if (String(row.InternetService).includes("Fiber")) score += 0.1;
-    if (String(row.PaymentMethod).includes("Electronic")) score += 0.1;
+    if (row.contract === "Month-to-month") score += 0.4;
+    // Note: CSV parser lowers keys, but values might retain case
+    // We assume parseCSV keeps values as-is (e.g. "Fiber optic")
+    if (String(row.internet_service || "").includes("Fiber")) score += 0.1;
+    if (String(row.payment_method || "").includes("Electronic")) score += 0.1;
 
     const tenure = Number(row.tenure);
     if (tenure > 12) score -= 0.1;
     if (tenure > 48) score -= 0.2;
-    if (row.Contract === "Two year") score -= 0.3;
+    if (row.contract === "Two year") score -= 0.3;
 
     score += (Math.random() - 0.5) * 0.1;
 
@@ -150,7 +150,7 @@ function calculateMockChurnScore(row) {
  * 2. Segment Generation Logic
  */
 function determineSegment(row) {
-    const charges = Number(row.MonthlyCharges);
+    const charges = Number(row.monthly_charges);
     if (charges >= 90) return "VIP";      
     if (charges >= 50) return "STANDARD"; 
     return "OTHER";                       
@@ -174,6 +174,8 @@ function parseCSV(text) {
         const clean = h.trim().toLowerCase();
         if (clean === "monthlycharges") return "monthly_charges";
         if (clean === "customerid") return "customer_id";
+        if (clean === "internetservice") return "internet_service";
+        if (clean === "paymentmethod") return "payment_method";
         return clean;
     });
     
@@ -203,7 +205,9 @@ async function loadData() {
 }
 
 async function renderMermaid(mermaidCode) {
+    // Using global window.__mermaid__ injected in index.html
     const mermaid = window.__mermaid__;
+    if (!mermaid) return;
     const container = el("diagram");
     container.innerHTML = `<pre class="mermaid">${escapeHtml(mermaidCode)}</pre>`;
     await mermaid.run({ querySelector: ".mermaid" });
@@ -262,16 +266,16 @@ async function main() {
             const enriched = raw.map(r => {
                 // Map raw keys to helper function keys
                 const churnScore = calculateMockChurnScore({
-                    Contract: r.contract, // case insensitive access handled by parseCSV output
-                    InternetService: r.internet_service || "", 
-                    PaymentMethod: r.payment_method || "",
+                    contract: r.contract, 
+                    internet_service: r.internet_service || "", 
+                    payment_method: r.payment_method || "",
                     tenure: r.tenure,
-                    MonthlyCharges: r.monthly_charges,
+                    monthly_charges: r.monthly_charges,
                     segment: r.segment 
                 });
                 
                 const segment = determineSegment({
-                    MonthlyCharges: r.monthly_charges
+                    monthly_charges: r.monthly_charges
                 });
                 
                 // Execute Dynamic Rules with normalized keys
