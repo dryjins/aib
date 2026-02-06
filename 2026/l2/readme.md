@@ -1,3 +1,23 @@
+
+# Retention Policy Designer (Business Logic Lab)
+
+A tiny GitHub Pages app where students design **business logic** (in the Instruction box) to control retention offers:
+- Inputs: churn_score, segment, monthly_charges, tenure, contract
+- Output: offer ∈ {NO_OFFER, SMALL, MEDIUM, BIG}
+
+## What students edit
+Students ONLY edit the **Instruction** text (pseudocode + Mermaid + the POLICY block).
+The app parses the `[POLICY]` block and simulates outcomes on a CSV sample.
+
+## Deploy to GitHub Pages
+1. Push this repo to GitHub.
+2. Settings → Pages → Deploy from branch → select `main` and `/root`.
+3. Open the provided Pages URL.
+
+## Data
+`data/telco_sample.csv` is a small sample inspired by the Kaggle Telco churn dataset. [Kaggle dataset link](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
+
+
 ```markdown
 # Business Logic: Customer Retention Strategy
 
@@ -79,22 +99,3 @@ flowchart TD
 | **Churn 0.4-0.7** | VIP | Small | Pre-emptive care for high-value users. |
 | **Churn > 0.7** | VIP | Big | Critical intervention required. |
 ```
-
-# Retention Policy Designer (Business Logic Lab)
-
-A tiny GitHub Pages app where students design **business logic** (in the Instruction box) to control retention offers:
-- Inputs: churn_score, segment, monthly_charges, tenure, contract
-- Output: offer ∈ {NO_OFFER, SMALL, MEDIUM, BIG}
-
-## What students edit
-Students ONLY edit the **Instruction** text (pseudocode + Mermaid + the POLICY block).
-The app parses the `[POLICY]` block and simulates outcomes on a CSV sample.
-
-## Deploy to GitHub Pages
-1. Push this repo to GitHub.
-2. Settings → Pages → Deploy from branch → select `main` and `/root`.
-3. Open the provided Pages URL.
-
-## Data
-`data/telco_sample.csv` is a small sample inspired by the Kaggle Telco churn dataset. [Kaggle dataset link](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) [web:399]
-
