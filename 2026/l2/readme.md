@@ -1,55 +1,45 @@
+```markdown
 # Business Logic: Customer Retention Strategy
 
 This module defines the decision logic for automated retention offers. It translates business intent (churn prevention) into executable rules based on customer segments and churn scores.
 
-## 1. Pseudocode
+## 1. Pseudocode (Logic Flow)
 
-The core logic is implemented as follows:
+The core logic is designed to optimize budget allocation by targeting high-risk, high-value users.
 
-```javascript
-/**
- * Decides which retention offer to present to a user based on churn risk and segment.
- * 
- * @param {string} user_id - The unique identifier of the user.
- * @returns {string} The offer code (e.g., "BIG_COUPON", "NO_OFFER").
- */
-function decide_retention_offer(user_id) {
-  // 1. Data Quality Check
-  // Ensure we have valid data before making decisions (Hallucination prevention level 1)
-  let is_valid = check_data_quality(user_id);
+```text
+LOGIC: Decide Retention Offer
+
+INPUT: user_id
+OUTPUT: offer_code
+
+Step 1: Verify Data Quality (Anti-Hallucination)
+  SET is_valid = CHECK_DATA_QUALITY(user_id)
+  IF is_valid is FALSE THEN
+    RETURN "NO_OFFER" (Fail Safe)
+
+Step 2: Get Customer Context
+  SET segment = GET_SEGMENT(user_id)  (e.g., "VIP", "STANDARD")
+  SET churn   = GET_CHURN_SCORE(user_id) (0.0 to 1.0)
+
+Step 3: Apply Business Rules
+  IF churn < 0.4 (Low Risk) THEN
+    RETURN "NO_OFFER"
   
-  if (is_valid == false) {
-    return "NO_OFFER"; // Fail safe
-  }
-
-  // 2. Context Retrieval (Input)
-  let segment = classify_segment(user_id); // e.g., "VIP", "STANDARD"
-  let churn   = get_churn_score(user_id);  // Float 0.0 to 1.0
-
-  // 3. Decision Logic (Business Rules)
-  // Low Risk (< 0.4) -> Do nothing (save budget)
-  if (churn < 0.4) {
-    return "NO_OFFER";
-  } 
-  // Medium Risk (0.4 - 0.7) -> Nudge only VIPs
-  else if (churn < 0.7) {
-    if (segment == "VIP") {
-      return "SMALL_COUPON";
-    } else {
-      return "NO_OFFER";
-    }
-  } 
-  // High Risk (>= 0.7) -> Aggressive retention
-  else {
-    if (segment == "VIP") {
-      return "BIG_COUPON";
-    } else if (segment == "STANDARD") {
-      return "MEDIUM_COUPON";
-    } else {
-      return "SMALL_COUPON";
-    }
-  }
-}
+  ELSE IF churn < 0.7 (Medium Risk) THEN
+    IF segment is "VIP" THEN
+      RETURN "SMALL_COUPON"
+    ELSE
+      RETURN "NO_OFFER"
+    END IF
+  
+  ELSE (High Risk >= 0.7) THEN
+    CASE segment OF
+      "VIP":      RETURN "BIG_COUPON"
+      "STANDARD": RETURN "MEDIUM_COUPON"
+      OTHER:      RETURN "SMALL_COUPON"
+    END CASE
+  END IF
 ```
 
 ## 2. Logic Flowchart
@@ -88,4 +78,4 @@ flowchart TD
 | **Churn < 0.4** | Any | None | Save budget on loyal users. |
 | **Churn 0.4-0.7** | VIP | Small | Pre-emptive care for high-value users. |
 | **Churn > 0.7** | VIP | Big | Critical intervention required. |
-
+```
