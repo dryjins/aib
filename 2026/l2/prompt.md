@@ -1,7 +1,3 @@
-Of course, Doctor. Here is the `prompt.md` file designed to guide students in performing **LLM-in-the-Loop Optimization**.
-
-This file is structured to be copied and pasted by students into their LLM of choice (ChatGPT, Claude, etc.). It provides the AI with the necessary context (simulation rules, data schema, syntax) to act as a **"Lead Data Strategist."**
-
 ```markdown
 # Retention Strategy Assistant Prompts
 
