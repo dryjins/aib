@@ -218,7 +218,7 @@ async function renderMermaid(mermaidCode) {
   /**
    * Render Mermaid code into the diagram container.
    *
-   * Mermaid initialization is based on Mermaid docs using mermaid.initialize(). [web:430]
+   * Mermaid initialization is based on Mermaid docs using mermaid.initialize().
    */
   const mermaid = window.__mermaid__;
   const container = el("diagram");
