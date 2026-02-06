@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Retention Policy Designer</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <header class="header">
+    <h1>Retention Policy Designer</h1>
+    <p>Business logic lives in the <b>Instruction</b> box (pseudocode + Mermaid + policy parameters).</p>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Instruction (Editable)</h2>
+      <textarea id="instruction" spellcheck="false"></textarea>
+
+      <div class="row">
+        <button id="runBtn">Run simulation</button>
+        <span id="status" class="muted"></span>
+      </div>
+
+      <details>
+        <summary>What students should do</summary>
+        <ul>
+          <li>Edit thresholds (LOW, MED) and offer mapping in the <code>[POLICY]</code> block.</li>
+          <li>Keep pseudocode + Mermaid consistent with the policy.</li>
+          <li>Try to optimize: fewer coupons, better targeting of high-risk churners.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>Mermaid preview</h2>
+      <div id="diagram" class="diagram"></div>
+      <p class="muted">Mermaid is rendered client-side using Mermaid’s recommended initialization approach. [web:430]</p>
+    </section>
+
+    <section class="panel">
+      <h2>Results</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">Rows</div><div id="kpiRows" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="kpi-label">Budget used</div><div id="kpiBudget" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="kpi-label">High-risk coverage</div><div id="kpiCoverage" class="kpi-value">—</div></div>
+      </div>
+
+      <h3>Offer counts</h3>
+      <pre id="offerCounts" class="codebox">—</pre>
+
+      <h3>Sample output (first 12)</h3>
+      <div class="tableWrap">
+        <table id="outTable"></table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: false });
+    window.__mermaid__ = mermaid;
+  </script>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
