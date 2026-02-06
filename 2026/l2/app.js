@@ -1,4 +1,4 @@
-// ... (Imports and Mermaid setup from previous) ...
+// ... (Imports and Mermaid setup) ...
 
 /**
  * Retention Policy Designer (Business Logic Simulator)
@@ -165,11 +165,17 @@ function offerCost(offer) {
 }
 
 /**
- * 3. CSV Parser updated for real Kaggle Data
+ * 3. CSV Parser (Improved for Case-Insensitivity)
  */
 function parseCSV(text) {
     const lines = text.trim().split("\n");
-    const headers = lines[0].split(",").map(h => h.trim());
+    // Force lowercase headers to avoid case sensitivity issues
+    const headers = lines[0].split(",").map(h => {
+        const clean = h.trim().toLowerCase();
+        if (clean === "monthlycharges") return "monthly_charges";
+        if (clean === "customerid") return "customer_id";
+        return clean;
+    });
     
     // Sample only first 300 rows for performance
     const sampleSize = 300; 
@@ -209,7 +215,7 @@ function escapeHtml(s) {
 
 function renderTable(rows) {
     const table = el("outTable");
-    const headers = ["customerID", "segment", "MonthlyCharges", "tenure", "Contract", "churn_score", "offer", "cost"];
+    const headers = ["customer_id", "segment", "monthly_charges", "tenure", "contract", "churn_score", "offer", "cost"];
 
     table.innerHTML = "";
     const thead = document.createElement("thead");
@@ -254,26 +260,37 @@ async function main() {
             
             // 3. Process Rows
             const enriched = raw.map(r => {
-                const churnScore = calculateMockChurnScore(r);
-                const segment = determineSegment(r);
+                // Map raw keys to helper function keys
+                const churnScore = calculateMockChurnScore({
+                    Contract: r.contract, // case insensitive access handled by parseCSV output
+                    InternetService: r.internet_service || "", 
+                    PaymentMethod: r.payment_method || "",
+                    tenure: r.tenure,
+                    MonthlyCharges: r.monthly_charges,
+                    segment: r.segment 
+                });
                 
-                // Execute Dynamic Rules
+                const segment = determineSegment({
+                    MonthlyCharges: r.monthly_charges
+                });
+                
+                // Execute Dynamic Rules with normalized keys
                 const offer = executeRules({ 
                     ...r, 
                     churn_score: churnScore, 
                     segment: segment,
-                    monthly_charges: Number(r.MonthlyCharges),
+                    monthly_charges: Number(r.monthly_charges),
                     tenure: Number(r.tenure),
-                    contract: r.Contract
+                    contract: r.contract
                 }, rules);
                 
                 const cost = offerCost(offer);
 
                 return {
-                    customerID: r.customerID,
+                    customer_id: r.customer_id,
                     segment: segment, 
-                    Contract: r.Contract,
-                    MonthlyCharges: r.MonthlyCharges,
+                    contract: r.contract,
+                    monthly_charges: r.monthly_charges,
                     tenure: r.tenure,
                     churn_score: churnScore.toFixed(2), 
                     offer: offer,
@@ -307,14 +324,16 @@ async function main() {
             el("kpiRows").textContent = String(enriched.length);
             el("kpiBudget").textContent = fmtMoney(totalCost);
             el("kpiCoverage").textContent = `${Math.round(coverage * 100)}%`;
-            el("kpiScore").textContent = finalScore;
-            el("kpiAvgCost").textContent = fmtMoney(totalCost / enriched.length);
-
-            // Conditional Coloring for Score
-            const scoreEl = el("kpiScore");
-            if (finalScore >= 85) scoreEl.style.color = "#10b981"; // Green
-            else if (finalScore >= 50) scoreEl.style.color = "#f59e0b"; // Orange
-            else scoreEl.style.color = "#ef4444"; // Red
+            
+            if(el("kpiScore")) {
+                el("kpiScore").textContent = finalScore;
+                const scoreEl = el("kpiScore");
+                if (finalScore >= 85) scoreEl.style.color = "#10b981"; // Green
+                else if (finalScore >= 50) scoreEl.style.color = "#f59e0b"; // Orange
+                else scoreEl.style.color = "#ef4444"; // Red
+            }
+            
+            el("kpiAvgCost").textContent = fmtMoney(enriched.length ? totalCost / enriched.length : 0);
 
             // Offer Counts
             const counts = {};
