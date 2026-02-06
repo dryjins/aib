@@ -310,18 +310,26 @@ async function main() {
             const highRiskCovered = highRisk.filter((r) => r.offer !== "NO_OFFER").length;
             const coverage = highRisk.length ? (highRiskCovered / highRisk.length) : 0;
 
-            // --- Policy Score Logic ---
+            // --- Policy Score Logic (Updated for better balance) ---
             const BUDGET_LIMIT = 3500;
             // Safety Score (Max 50): Target 90% coverage
             const safetyScore = Math.min(50, (coverage / 0.9) * 50);
-            // Efficiency Score (Max 50): Target $0 spend
-            const budgetRatio = Math.min(1, totalCost / BUDGET_LIMIT);
-            const efficiencyScore = 50 * (1 - budgetRatio);
-            // Penalty: 10% deduction for every $10 over budget
+            
+            // Efficiency Score (Max 50): Target $0 spend BUT give base points for staying under limit
+            // New Formula: If under budget, Base(30) + Bonus(up to 20 for saving)
+            let efficiencyScore = 0;
+            if (totalCost <= BUDGET_LIMIT) {
+                efficiencyScore = 30 + (20 * (1 - (totalCost / BUDGET_LIMIT)));
+            } else {
+                efficiencyScore = 0; // Over budget gets 0 efficiency points
+            }
+
+            // Penalty: Deduction for every $10 over budget
             let penalty = 0;
             if (totalCost > BUDGET_LIMIT) {
                 penalty = (totalCost - BUDGET_LIMIT) * 0.1;
             }
+            
             const finalScore = Math.max(0, Math.round(safetyScore + efficiencyScore - penalty));
 
             // Render KPIs
