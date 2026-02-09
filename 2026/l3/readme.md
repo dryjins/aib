@@ -107,11 +107,10 @@ function determineBusinessAction(confidence, label) {
 
 ---
 
-## 📤 Submission Requirements
+## 📤 Requirements
 
 1.  **Deploy** your updated web page (GitHub Pages).
-2.  **Submit the Link** to your GitHub repository.
-3.  **Screenshot** of your Google Sheet showing the new `action_taken` column populated with different actions ("OFFER_COUPON", "ASK_REFERRAL", etc.).
+2.  **Screen** of your Google Sheet showing the new `action_taken` column populated with different actions ("OFFER_COUPON", "ASK_REFERRAL", etc.).
 
 ## 💡 Evaluation Criteria
 *   **Logic Accuracy:** Does a negative review actually trigger the coupon logic?
