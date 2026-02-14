@@ -1,10 +1,10 @@
 {
-  "name": "Crypto Trading Bot - Baseline (Fixed for DateTime)",
+  "name": "Crypto Trading Bot - Simple Batch Fixed",
   "nodes": [
     {
       "parameters": {},
       "id": "manual_trigger",
-      "name": "Manual Trigger",
+      "name": "Start Bot",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [240, 400]
@@ -16,7 +16,7 @@
         "options": {}
       },
       "id": "load_features",
-      "name": "Load Market Data (GitHub)",
+      "name": "1. Load Market Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [460, 400]
@@ -28,134 +28,142 @@
         "options": {}
       },
       "id": "load_news",
-      "name": "Load News Data (GitHub)",
+      "name": "2. Load News Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [460, 600]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first();\nlet text = '';\n\nif (typeof input.json === 'string') {\n  text = input.json;\n} else if (input.json.data) {\n  text = input.json.data;\n} else if (input.binary && input.binary.data) {\n  text = Buffer.from(input.binary.data.data, 'base64').toString('utf-8');\n} else {\n  text = JSON.stringify(input.json);\n}\n\nconst lines = text.split('\\n').filter(l => l.trim());\nif (lines.length === 0) {\n  throw new Error('Empty CSV data');\n}\n\nconst headers = lines[0].split(',').map(h => h.trim());\n\nconst result = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i];\n  if (!line.trim()) continue;\n  \n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  \n  for (let char of line) {\n    if (char === '\"') {\n      inQuotes = !inQuotes;\n    } else if (char === ',' && !inQuotes) {\n      values.push(current.trim());\n      current = '';\n    } else {\n      current += char;\n    }\n  }\n  values.push(current.trim());\n  \n  const obj = {};\n  headers.forEach((h, idx) => {\n    obj[h] = values[idx] || '';\n  });\n  \n  result.push({ json: obj });\n}\n\nreturn result;"
+        "jsCode": "const input = $input.first();\nlet text = '';\nif (typeof input.json === 'string') text = input.json;\nelse if (input.json.data) text = input.json.data;\nelse if (input.binary) text = Buffer.from(input.binary.data.data, 'base64').toString('utf-8');\n\nconst lines = text.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.trim());\n\nconst result = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i];\n  if (!line.trim()) continue;\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (let char of line) {\n    if (char === '\"') inQuotes = !inQuotes;\n    else if (char === ',' && !inQuotes) {\n      values.push(current.trim());\n      current = '';\n    } else current += char;\n  }\n  values.push(current.trim());\n  const obj = {};\n  headers.forEach((h, idx) => obj[h] = values[idx] || '');\n  result.push({ json: obj });\n}\nreturn result;"
       },
-      "id": "parse_features",
-      "name": "Parse Market CSV",
+      "id": "parse_market",
+      "name": "Parse CSV (Market)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [680, 400]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first();\nlet text = '';\n\nif (typeof input.json === 'string') {\n  text = input.json;\n} else if (input.json.data) {\n  text = input.json.data;\n} else if (input.binary && input.binary.data) {\n  text = Buffer.from(input.binary.data.data, 'base64').toString('utf-8');\n} else {\n  text = JSON.stringify(input.json);\n}\n\nconst lines = text.split('\\n').filter(l => l.trim());\nif (lines.length === 0) {\n  throw new Error('Empty CSV data');\n}\n\nconst headers = lines[0].split(',').map(h => h.trim());\n\nconst result = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i];\n  if (!line.trim()) continue;\n  \n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  \n  for (let char of line) {\n    if (char === '\"') {\n      inQuotes = !inQuotes;\n    } else if (char === ',' && !inQuotes) {\n      values.push(current.trim());\n      current = '';\n    } else {\n      current += char;\n    }\n  }\n  values.push(current.trim());\n  \n  const obj = {};\n  headers.forEach((h, idx) => {\n    obj[h] = values[idx] || '';\n  });\n  \n  result.push({ json: obj });\n}\n\nreturn result;"
+        "jsCode": "const input = $input.first();\nlet text = '';\nif (typeof input.json === 'string') text = input.json;\nelse if (input.json.data) text = input.json.data;\nelse if (input.binary) text = Buffer.from(input.binary.data.data, 'base64').toString('utf-8');\n\nconst lines = text.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.trim());\n\nconst result = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i];\n  if (!line.trim()) continue;\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (let char of line) {\n    if (char === '\"') inQuotes = !inQuotes;\n    else if (char === ',' && !inQuotes) {\n      values.push(current.trim());\n      current = '';\n    } else current += char;\n  }\n  values.push(current.trim());\n  const obj = {};\n  headers.forEach((h, idx) => obj[h] = values[idx] || '');\n  result.push({ json: obj });\n}\nreturn result;"
       },
       "id": "parse_news",
-      "name": "Parse News CSV",
+      "name": "Parse CSV (News)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [680, 600]
     },
     {
       "parameters": {
-        "jsCode": "const newsByDate = {};\n\nfor (const item of $input.all()) {\n  // 1. date 컬럼이 있으면 사용, 없으면 datetime에서 날짜만 추출\n  let dateStr = item.json.date;\n  \n  if (!dateStr && item.json.datetime) {\n    // \"2026-02-13 15:45:11\" -> \"2026-02-13\"\n    dateStr = item.json.datetime.split(' ')[0];\n  }\n\n  // 날짜 정보가 없으면 스킵\n  if (!dateStr) continue;\n\n  if (!newsByDate[dateStr]) {\n    newsByDate[dateStr] = [];\n  }\n  \n  newsByDate[dateStr].push({\n    title: item.json.title || '',\n    body: item.json.body || '',\n    time: item.json.time || (item.json.datetime ? item.json.datetime.split(' ')[1] : '')\n  });\n}\n\nreturn [{ json: { newsByDate } }];"
+        "jsCode": "const newsByDate = {};\nfor (const item of $input.all()) {\n  let d = item.json.date || (item.json.datetime ? item.json.datetime.split(' ')[0] : '');\n  if (!d) continue;\n  if (!newsByDate[d]) newsByDate[d] = [];\n  newsByDate[d].push(item.json.title);\n}\nreturn [{ json: { newsByDate } }];"
       },
       "id": "group_news",
-      "name": "Group News by Date",
+      "name": "Group News",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [900, 600]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nlet newsLookup = {};\nfor (const item of items) {\n  if (item.json.newsByDate) {\n    newsLookup = item.json.newsByDate;\n    break;\n  }\n}\n\nconst merged = [];\nfor (const item of items) {\n  if (item.json.newsByDate) continue;\n  \n  const date = item.json.date;\n  const news = newsLookup[date] || [];\n  \n  const newsText = news.length > 0 \n    ? news.map(n => `${n.title}: ${n.body.substring(0, 200)}`).slice(0, 3).join('\\n\\n')\n    : 'No significant news today';\n  \n  merged.push({\n    json: {\n      ...item.json,\n      news_text: newsText,\n      news_count: news.length\n    }\n  });\n}\n\nreturn merged;"
+        "mode": "append"
       },
-      "id": "merge_data",
-      "name": "Merge Market + News",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1120, 400]
+      "id": "wait_merge",
+      "name": "Wait for Both",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1100, 400]
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst prompt = `System: You are a cryptocurrency analyst. Output ONLY valid JSON (no markdown).\n\nDate: ${data.date}\nCoin: ${data.ticker}\n\nNews:\n${data.news_text}\n\nMarket Data:\n- Price: $${data.close}\n- RSI: ${data.rsi}\n- MACD: ${data.macd_hist}\n- BB Position: ${data.bb_position}\n\nOutput JSON:\n{\n  \"sentiment_score\": -1 to 1,\n  \"market_mood\": \"bullish/bearish/neutral\",\n  \"recommended_action\": \"buy/sell/hold\",\n  \"confidence\": 0 to 1,\n  \"reasoning\": \"text\"\n}`;\n\nreturn [{\n  json: {\n    ...data,\n    prompt: prompt\n  }\n}];"
+        "jsCode": "const allItems = $input.all();\nlet newsLookup = {};\nconst marketData = [];\n\nfor (const item of allItems) {\n  if (item.json.newsByDate) newsLookup = item.json.newsByDate;\n  else if (item.json.date) marketData.push(item);\n}\n\nmarketData.sort((a, b) => new Date(a.json.date) - new Date(b.json.date));\n\nconst merged = [];\nfor (const item of marketData) {\n  let d = item.json.date.split(' ')[0];\n  const news = newsLookup[d] || [];\n  const newsText = news.length > 0 ? news.slice(0, 3).join(' | ') : \"Market is quiet today.\";\n\n  merged.push({\n    json: {\n      ...item.json,\n      news_text: newsText,\n      news_count: news.length\n    }\n  });\n}\n\nreturn merged;"
       },
-      "id": "build_prompt",
-      "name": "🎯 MODIFY: LLM Prompt",
+      "id": "daily_merge",
+      "name": "3. Merge Daily Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 400]
+      "position": [1300, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple Batch Preparation\nconst allItems = $input.all();\nconst inputsArray = allItems.map(item => item.json.news_text);\n\n// We store original items to merge later\nreturn [{\n  json: {\n    batch_inputs: inputsArray,\n    original_items: allItems.map(i => i.json)\n  }\n}];"
+      },
+      "id": "prepare_batch",
+      "name": "4. Prepare Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1550, 400]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:11434/api/generate",
+        "url": "https://router.huggingface.co/hf-inference/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\"model\": \"martain7r/finance-llama-8b:q4_k_m\", \"prompt\": $json.prompt, \"stream\": false, \"format\": \"json\"} }}",
-        "options": {
-          "timeout": 120000
-        }
+        "jsonBody": "={{ {\"inputs\": $json.batch_inputs} }}",
+        "options": {}
       },
-      "id": "call_llm",
-      "name": "Call Ollama LLM",
+      "id": "hf_api_call",
+      "name": "5. HF Sentiment (Single Batch)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 400],
-      "notes": "Finance model: martain7r/finance-llama-8b:q4_k_m"
+      "position": [1800, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HF_HEADER_AUTH_ID",
+          "name": "Direct HF Token"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nlet analysis;\ntry {\n  analysis = JSON.parse(data.response);\n} catch (e) {\n  analysis = {\n    sentiment_score: 0,\n    market_mood: \"neutral\",\n    recommended_action: \"hold\",\n    confidence: 0,\n    reasoning: \"LLM parse failed\"\n  };\n}\n\nreturn [{\n  json: {\n    date: data.date,\n    ticker: data.ticker,\n    price: parseFloat(data.close),\n    analysis: analysis,\n    indicators: {\n      rsi: parseFloat(data.rsi || 0),\n      macd_hist: parseFloat(data.macd_hist || 0),\n      bb_position: parseFloat(data.bb_position || 0),\n      volatility: parseFloat(data.volatility_7d || 0)\n    }\n  }\n}];"
+        "jsCode": "// Final Logic & Merge\nconst item = $input.first();\nconst apiResponse = item.json.data || item.json;\nconst originalItems = item.json.original_items; \n\nlet sentiments = apiResponse;\n// Flatten if nested [[...]]\nif (Array.isArray(apiResponse) && Array.isArray(apiResponse[0])) {\n    sentiments = apiResponse;\n} else if (!Array.isArray(apiResponse)) {\n    sentiments = [apiResponse];\n}\n\nconst trades = [];\nfor (let i = 0; i < originalItems.length; i++) {\n    const d = originalItems[i];\n    const s = sentiments[i];\n    \n    let sentimentLabel = 'NEUTRAL';\n    let sentimentScore = 0;\n    \n    // Parse sentiment\n    let best = { score: 0, label: 'NEUTRAL' };\n    if (Array.isArray(s)) {\n        best = s.reduce((p, c) => (c.score > p.score ? c : p), {score: 0});\n    } else if (s && s.label) {\n        best = s;\n    }\n    \n    sentimentLabel = best.label || 'NEUTRAL';\n    sentimentScore = best.score || 0;\n\n    // Decision Logic\n    let decision = 'hold';\n    let reason = `News: ${sentimentLabel} (${(sentimentScore*100).toFixed(0)}%)`;\n    const rsi = parseFloat(d.rsi) || 50;\n\n    if (rsi < 30) { decision = 'buy'; reason = 'Oversold'; }\n    else if (rsi > 70) { decision = 'sell'; reason = 'Overbought'; }\n    else {\n      if (sentimentLabel === 'POSITIVE' && sentimentScore > 0.85) { decision = 'buy'; reason = 'Positive News'; }\n      else if (sentimentLabel === 'NEGATIVE' && sentimentScore > 0.85) { decision = 'sell'; reason = 'Negative News'; }\n    }\n    \n    trades.push({\n        date: d.date,\n        ticker: d.ticker,\n        price: d.price || d.close,\n        decision,\n        rsi,\n        sentiment_label: sentimentLabel,\n        sentiment_score: sentimentScore.toFixed(2),\n        reason\n    });\n}\n\n// Calculate Metrics\nlet balance = 10000; \nlet position = 0; \nconst initialBalance = 10000;\nlet peakBalance = initialBalance;\nlet maxDrawdown = 0;\nlet totalTrades = 0;\nlet equityCurve = [];\n\nfor (let i = 0; i < trades.length; i++) {\n  const t = trades[i];\n  const price = parseFloat(t.price);\n  \n  if (t.decision === 'buy' && position === 0) {\n    position = balance / price;\n    balance = 0;\n    totalTrades++;\n  } else if (t.decision === 'sell' && position > 0) {\n    balance = position * price;\n    position = 0;\n    totalTrades++;\n  }\n  \n  const currentEquity = balance + (position * price);\n  equityCurve.push(currentEquity);\n  \n  if (currentEquity > peakBalance) peakBalance = currentEquity;\n  const dd = (peakBalance - currentEquity) / peakBalance;\n  if (dd > maxDrawdown) maxDrawdown = dd;\n}\n\nconst finalEquity = equityCurve[equityCurve.length - 1] || initialBalance;\nconst totalReturn = ((finalEquity - initialBalance) / initialBalance) * 100;\n\nreturn [{\n  json: {\n    metric_summary: {\n      \"Total Trades\": totalTrades,\n      \"Total Return\": totalReturn.toFixed(2) + \"%\",\n      \"Max Drawdown\": \"-\" + (maxDrawdown * 100).toFixed(2) + \"%\",\n      \"Final Balance\": \"$\" + finalEquity.toFixed(2)\n    },\n    trade_log: trades\n  }\n}];"
       },
-      "id": "parse_response",
-      "name": "Parse LLM Response",
+      "id": "final_logic",
+      "name": "6. Final Logic & Metrics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1780, 400]
+      "position": [2050, 400]
     },
     {
       "parameters": {
-        "jsCode": "// ========================================\n// 🎯 STUDENTS: MODIFY THIS LOGIC\n// ========================================\n\nconst { analysis, indicators, date, ticker, price } = $input.first().json;\n\nconst sentiment = parseFloat(analysis.sentiment_score) || 0;\nconst rsi = parseFloat(indicators.rsi) || 0;\nconst bb_pos = parseFloat(indicators.bb_position) || 0;\n\nlet decision = \"hold\";\nlet reason = \"Neutral conditions\";\n\nif (sentiment > 0.5 && rsi < 70 && bb_pos < 0.8) {\n  decision = \"buy\";\n  reason = \"Positive sentiment + healthy RSI\";\n} else if (sentiment < -0.3 || rsi > 75) {\n  decision = \"sell\";\n  reason = \"Negative sentiment or overbought\";\n} else if (rsi > 85) {\n  decision = \"sell\";\n  reason = \"Emergency stop-loss (extreme overbought)\";\n}\n\nreturn [{\n  json: {\n    date: date || 'N/A', \n    ticker: ticker || 'N/A', \n    price: price || 0, \n    decision, \n    reason,\n    sentiment: sentiment.toFixed(3), \n    rsi: rsi.toFixed(2),\n    confidence: (parseFloat(analysis.confidence) || 0).toFixed(3)\n  }\n}];"
-      },
-      "id": "trading_logic",
-      "name": "🎯 MODIFY: Trading Logic",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2000, 400]
-    },
-    {
-      "parameters": {
-        "jsCode": "const trades = $input.all();\n\nconst buys = trades.filter(t => t.json.decision === 'buy').length;\nconst sells = trades.filter(t => t.json.decision === 'sell').length;\nconst holds = trades.filter(t => t.json.decision === 'hold').length;\n\nconst csvHeader = 'date,ticker,price,decision,reason,sentiment,rsi,confidence\\n';\nconst csvRows = trades.map(t => {\n  const j = t.json;\n  return `${j.date},${j.ticker},${j.price},${j.decision},\"${j.reason}\",${j.sentiment},${j.rsi},${j.confidence}`;\n}).join('\\n');\n\nconst csvContent = csvHeader + csvRows;\n\nreturn [{\n  json: {\n    total_trades: trades.length,\n    buys: buys,\n    sells: sells,\n    holds: holds,\n    message: `Backtest complete! ${buys} buys, ${sells} sells, ${holds} holds`\n  },\n  binary: {\n    data: {\n      data: Buffer.from(csvContent).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: 'trades_log.csv'\n    }\n  }\n}];"
+        "jsCode": "const input = $input.first();\nconst trades = input.json.trade_log;\nconst summary = input.json.metric_summary;\n\nif (!trades) throw new Error(\"No trade data\");\n\nconst header = 'date,ticker,price,decision,rsi,sentiment,reason\\n';\nconst csvRows = trades.map(t => {\n  const safeReason = (t.reason || '').replace(/\"/g, \"'\");\n  return `${t.date},${t.ticker},${t.price},${t.decision},${t.rsi},${t.sentiment_label},\"${safeReason}\"`;\n}).join('\\n');\n\nconst csvContent = header + csvRows;\n\nreturn [{\n  json: {\n    summary: summary,\n    message: \"CSV Ready\"\n  },\n  binary: {\n    data: {\n      data: Buffer.from(csvContent).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: 'final_results.csv'\n    }\n  }\n}];"
       },
       "id": "export_csv",
-      "name": "Export trades_log.csv",
+      "name": "7. Export CSV",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2220, 400],
-      "notes": "Download CSV from execution output"
+      "position": [2300, 400]
     }
   ],
   "connections": {
-    "Manual Trigger": {
+    "Start Bot": {
       "main": [
         [
-          { "node": "Load Market Data (GitHub)", "type": "main", "index": 0 },
-          { "node": "Load News Data (GitHub)", "type": "main", "index": 0 }
+          { "node": "1. Load Market Data", "type": "main", "index": 0 },
+          { "node": "2. Load News Data", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Load Market Data (GitHub)": { "main": [[{ "node": "Parse Market CSV" }]] },
-    "Load News Data (GitHub)": { "main": [[{ "node": "Parse News CSV" }]] },
-    "Parse Market CSV": { "main": [[{ "node": "Merge Market + News" }]] },
-    "Parse News CSV": { "main": [[{ "node": "Group News by Date" }]] },
-    "Group News by Date": { "main": [[{ "node": "Merge Market + News" }]] },
-    "Merge Market + News": { "main": [[{ "node": "🎯 MODIFY: LLM Prompt" }]] },
-    "🎯 MODIFY: LLM Prompt": { "main": [[{ "node": "Call Ollama LLM" }]] },
-    "Call Ollama LLM": { "main": [[{ "node": "Parse LLM Response" }]] },
-    "Parse LLM Response": {
-      "main": [[{ "node": "🎯 MODIFY: Trading Logic" }]]
+    "1. Load Market Data": { "main": [[{ "node": "Parse CSV (Market)" }]] },
+    "2. Load News Data": { "main": [[{ "node": "Parse CSV (News)" }]] },
+    "Parse CSV (Market)": {
+      "main": [[{ "node": "Wait for Both", "type": "main", "index": 0 }]]
     },
-    "🎯 MODIFY: Trading Logic": {
-      "main": [[{ "node": "Export trades_log.csv" }]]
-    }
+    "Parse CSV (News)": { "main": [[{ "node": "Group News" }]] },
+    "Group News": {
+      "main": [[{ "node": "Wait for Both", "type": "main", "index": 1 }]]
+    },
+    "Wait for Both": { "main": [[{ "node": "3. Merge Daily Data" }]] },
+    "3. Merge Daily Data": { "main": [[{ "node": "4. Prepare Batch" }]] },
+    "4. Prepare Batch": {
+      "main": [[{ "node": "5. HF Sentiment (Single Batch)" }]]
+    },
+    "5. HF Sentiment (Single Batch)": {
+      "main": [[{ "node": "6. Final Logic & Metrics" }]]
+    },
+    "6. Final Logic & Metrics": { "main": [[{ "node": "7. Export CSV" }]] }
   },
   "pinData": {}
 }
