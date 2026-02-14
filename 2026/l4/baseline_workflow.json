@@ -1,5 +1,5 @@
 {
-  "name": "Crypto Trading Bot - Baseline",
+  "name": "Crypto Trading Bot - Baseline (Fixed for DateTime)",
   "nodes": [
     {
       "parameters": {},
@@ -55,7 +55,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const newsByDate = {};\n\nfor (const item of $input.all()) {\n  const date = item.json.date;\n  if (!newsByDate[date]) {\n    newsByDate[date] = [];\n  }\n  newsByDate[date].push({\n    title: item.json.title || '',\n    body: item.json.body || ''\n  });\n}\n\nreturn [{ json: { newsByDate } }];"
+        "jsCode": "const newsByDate = {};\n\nfor (const item of $input.all()) {\n  // 1. date 컬럼이 있으면 사용, 없으면 datetime에서 날짜만 추출\n  let dateStr = item.json.date;\n  \n  if (!dateStr && item.json.datetime) {\n    // \"2026-02-13 15:45:11\" -> \"2026-02-13\"\n    dateStr = item.json.datetime.split(' ')[0];\n  }\n\n  // 날짜 정보가 없으면 스킵\n  if (!dateStr) continue;\n\n  if (!newsByDate[dateStr]) {\n    newsByDate[dateStr] = [];\n  }\n  \n  newsByDate[dateStr].push({\n    title: item.json.title || '',\n    body: item.json.body || '',\n    time: item.json.time || (item.json.datetime ? item.json.datetime.split(' ')[1] : '')\n  });\n}\n\nreturn [{ json: { newsByDate } }];"
       },
       "id": "group_news",
       "name": "Group News by Date",
