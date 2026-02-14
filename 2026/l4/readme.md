@@ -38,6 +38,35 @@ Modify the JavaScript code in the **`6. Final Logic & Metrics`** node in n8n.
 - Refine the `decision` logic (`buy` | `sell` | `hold`).
 - Implement complex conditions (e.g., "Buy only if Sentiment > 0.9 AND RSI < 40").
 
+### Current Baseline Logic Flowchart
+This is the default logic currently implemented in the workflow.
+
+```mermaid
+graph TD
+    Start([Input: Price, RSI, News]) --> CheckRSI_Low{RSI < 30?}
+
+    %% 1. Technical Analysis (RSI)
+    CheckRSI_Low -- Yes --> Buy[BUY (Reason: Oversold)]
+    CheckRSI_Low -- No --> CheckRSI_High{RSI > 70?}
+
+    CheckRSI_High -- Yes --> Sell[SELL (Reason: Overbought)]
+    CheckRSI_High -- No --> CheckSentiment_Pos{News: POSITIVE<br/>AND Score > 0.85?}
+
+    %% 2. Sentiment Analysis (News)
+    CheckSentiment_Pos -- Yes --> Buy2[BUY (Reason: Positive News)]
+    CheckSentiment_Pos -- No --> CheckSentiment_Neg{News: NEGATIVE<br/>AND Score > 0.85?}
+
+    CheckSentiment_Neg -- Yes --> Sell2[SELL (Reason: Negative News)]
+    CheckSentiment_Neg -- No --> Hold[HOLD]
+
+    %% Color Styling
+    style Buy fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Buy2 fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Sell fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Sell2 fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Hold fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
+
+
 ---
 
 ## 📝 Submission Guide
