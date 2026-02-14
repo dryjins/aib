@@ -1,169 +1,186 @@
-{
-  "name": "Crypto Trading Bot - Simple Batch Fixed",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "manual_trigger",
-      "name": "Start Bot",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [240, 400]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://raw.githubusercontent.com/dryjins/aib/main/2026/l4/crypto_features_3months.csv",
-        "options": {}
-      },
-      "id": "load_features",
-      "name": "1. Load Market Data",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [460, 400]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://raw.githubusercontent.com/dryjins/aib/main/2026/l4/crypto_news_3months.csv",
-        "options": {}
-      },
-      "id": "load_news",
-      "name": "2. Load News Data",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [460, 600]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first();\nlet text = '';\nif (typeof input.json === 'string') text = input.json;\nelse if (input.json.data) text = input.json.data;\nelse if (input.binary) text = Buffer.from(input.binary.data.data, 'base64').toString('utf-8');\n\nconst lines = text.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.trim());\n\nconst result = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i];\n  if (!line.trim()) continue;\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (let char of line) {\n    if (char === '\"') inQuotes = !inQuotes;\n    else if (char === ',' && !inQuotes) {\n      values.push(current.trim());\n      current = '';\n    } else current += char;\n  }\n  values.push(current.trim());\n  const obj = {};\n  headers.forEach((h, idx) => obj[h] = values[idx] || '');\n  result.push({ json: obj });\n}\nreturn result;"
-      },
-      "id": "parse_market",
-      "name": "Parse CSV (Market)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [680, 400]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first();\nlet text = '';\nif (typeof input.json === 'string') text = input.json;\nelse if (input.json.data) text = input.json.data;\nelse if (input.binary) text = Buffer.from(input.binary.data.data, 'base64').toString('utf-8');\n\nconst lines = text.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.trim());\n\nconst result = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i];\n  if (!line.trim()) continue;\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (let char of line) {\n    if (char === '\"') inQuotes = !inQuotes;\n    else if (char === ',' && !inQuotes) {\n      values.push(current.trim());\n      current = '';\n    } else current += char;\n  }\n  values.push(current.trim());\n  const obj = {};\n  headers.forEach((h, idx) => obj[h] = values[idx] || '');\n  result.push({ json: obj });\n}\nreturn result;"
-      },
-      "id": "parse_news",
-      "name": "Parse CSV (News)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [680, 600]
-    },
-    {
-      "parameters": {
-        "jsCode": "const newsByDate = {};\nfor (const item of $input.all()) {\n  let d = item.json.date || (item.json.datetime ? item.json.datetime.split(' ')[0] : '');\n  if (!d) continue;\n  if (!newsByDate[d]) newsByDate[d] = [];\n  newsByDate[d].push(item.json.title);\n}\nreturn [{ json: { newsByDate } }];"
-      },
-      "id": "group_news",
-      "name": "Group News",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [900, 600]
-    },
-    {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "wait_merge",
-      "name": "Wait for Both",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 2.1,
-      "position": [1100, 400]
-    },
-    {
-      "parameters": {
-        "jsCode": "const allItems = $input.all();\nlet newsLookup = {};\nconst marketData = [];\n\nfor (const item of allItems) {\n  if (item.json.newsByDate) newsLookup = item.json.newsByDate;\n  else if (item.json.date) marketData.push(item);\n}\n\nmarketData.sort((a, b) => new Date(a.json.date) - new Date(b.json.date));\n\nconst merged = [];\nfor (const item of marketData) {\n  let d = item.json.date.split(' ')[0];\n  const news = newsLookup[d] || [];\n  const newsText = news.length > 0 ? news.slice(0, 3).join(' | ') : \"Market is quiet today.\";\n\n  merged.push({\n    json: {\n      ...item.json,\n      news_text: newsText,\n      news_count: news.length\n    }\n  });\n}\n\nreturn merged;"
-      },
-      "id": "daily_merge",
-      "name": "3. Merge Daily Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1300, 400]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Simple Batch Preparation\nconst allItems = $input.all();\nconst inputsArray = allItems.map(item => item.json.news_text);\n\n// We store original items to merge later\nreturn [{\n  json: {\n    batch_inputs: inputsArray,\n    original_items: allItems.map(i => i.json)\n  }\n}];"
-      },
-      "id": "prepare_batch",
-      "name": "4. Prepare Batch",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1550, 400]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://router.huggingface.co/hf-inference/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ {\"inputs\": $json.batch_inputs} }}",
-        "options": {}
-      },
-      "id": "hf_api_call",
-      "name": "5. HF Sentiment (Single Batch)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1800, 400],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "HF_HEADER_AUTH_ID",
-          "name": "Direct HF Token"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Final Logic & Merge\nconst item = $input.first();\nconst apiResponse = item.json.data || item.json;\nconst originalItems = item.json.original_items; \n\nlet sentiments = apiResponse;\n// Flatten if nested [[...]]\nif (Array.isArray(apiResponse) && Array.isArray(apiResponse[0])) {\n    sentiments = apiResponse;\n} else if (!Array.isArray(apiResponse)) {\n    sentiments = [apiResponse];\n}\n\nconst trades = [];\nfor (let i = 0; i < originalItems.length; i++) {\n    const d = originalItems[i];\n    const s = sentiments[i];\n    \n    let sentimentLabel = 'NEUTRAL';\n    let sentimentScore = 0;\n    \n    // Parse sentiment\n    let best = { score: 0, label: 'NEUTRAL' };\n    if (Array.isArray(s)) {\n        best = s.reduce((p, c) => (c.score > p.score ? c : p), {score: 0});\n    } else if (s && s.label) {\n        best = s;\n    }\n    \n    sentimentLabel = best.label || 'NEUTRAL';\n    sentimentScore = best.score || 0;\n\n    // Decision Logic\n    let decision = 'hold';\n    let reason = `News: ${sentimentLabel} (${(sentimentScore*100).toFixed(0)}%)`;\n    const rsi = parseFloat(d.rsi) || 50;\n\n    if (rsi < 30) { decision = 'buy'; reason = 'Oversold'; }\n    else if (rsi > 70) { decision = 'sell'; reason = 'Overbought'; }\n    else {\n      if (sentimentLabel === 'POSITIVE' && sentimentScore > 0.85) { decision = 'buy'; reason = 'Positive News'; }\n      else if (sentimentLabel === 'NEGATIVE' && sentimentScore > 0.85) { decision = 'sell'; reason = 'Negative News'; }\n    }\n    \n    trades.push({\n        date: d.date,\n        ticker: d.ticker,\n        price: d.price || d.close,\n        decision,\n        rsi,\n        sentiment_label: sentimentLabel,\n        sentiment_score: sentimentScore.toFixed(2),\n        reason\n    });\n}\n\n// Calculate Metrics\nlet balance = 10000; \nlet position = 0; \nconst initialBalance = 10000;\nlet peakBalance = initialBalance;\nlet maxDrawdown = 0;\nlet totalTrades = 0;\nlet equityCurve = [];\n\nfor (let i = 0; i < trades.length; i++) {\n  const t = trades[i];\n  const price = parseFloat(t.price);\n  \n  if (t.decision === 'buy' && position === 0) {\n    position = balance / price;\n    balance = 0;\n    totalTrades++;\n  } else if (t.decision === 'sell' && position > 0) {\n    balance = position * price;\n    position = 0;\n    totalTrades++;\n  }\n  \n  const currentEquity = balance + (position * price);\n  equityCurve.push(currentEquity);\n  \n  if (currentEquity > peakBalance) peakBalance = currentEquity;\n  const dd = (peakBalance - currentEquity) / peakBalance;\n  if (dd > maxDrawdown) maxDrawdown = dd;\n}\n\nconst finalEquity = equityCurve[equityCurve.length - 1] || initialBalance;\nconst totalReturn = ((finalEquity - initialBalance) / initialBalance) * 100;\n\nreturn [{\n  json: {\n    metric_summary: {\n      \"Total Trades\": totalTrades,\n      \"Total Return\": totalReturn.toFixed(2) + \"%\",\n      \"Max Drawdown\": \"-\" + (maxDrawdown * 100).toFixed(2) + \"%\",\n      \"Final Balance\": \"$\" + finalEquity.toFixed(2)\n    },\n    trade_log: trades\n  }\n}];"
-      },
-      "id": "final_logic",
-      "name": "6. Final Logic & Metrics",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2050, 400]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first();\nconst trades = input.json.trade_log;\nconst summary = input.json.metric_summary;\n\nif (!trades) throw new Error(\"No trade data\");\n\nconst header = 'date,ticker,price,decision,rsi,sentiment,reason\\n';\nconst csvRows = trades.map(t => {\n  const safeReason = (t.reason || '').replace(/\"/g, \"'\");\n  return `${t.date},${t.ticker},${t.price},${t.decision},${t.rsi},${t.sentiment_label},\"${safeReason}\"`;\n}).join('\\n');\n\nconst csvContent = header + csvRows;\n\nreturn [{\n  json: {\n    summary: summary,\n    message: \"CSV Ready\"\n  },\n  binary: {\n    data: {\n      data: Buffer.from(csvContent).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: 'final_results.csv'\n    }\n  }\n}];"
-      },
-      "id": "export_csv",
-      "name": "7. Export CSV",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2300, 400]
+// Final Logic (Portfolio + Sharpe + MDD)
+const item = $input.first();
+
+// 1. Get Data
+let apiResponse = item.json.data || item.json;
+const prepareNode = $("4. Prepare Batch").first();
+const originalItems = prepareNode.json.original_items; 
+
+if (!originalItems) throw new Error("Missing original_items");
+
+// 2. Normalize API
+let sentiments = apiResponse;
+if (Array.isArray(apiResponse) && Array.isArray(apiResponse[0])) sentiments = apiResponse;
+else if (!Array.isArray(apiResponse)) sentiments = [apiResponse];
+
+// 3. Setup Portfolio
+const tickers = [...new Set(originalItems.map(i => i.ticker))]; 
+const initialCapitalPerTicker = 10000 / tickers.length; 
+const portfolio = {};
+
+tickers.forEach(t => {
+    portfolio[t] = { 
+        balance: initialCapitalPerTicker, 
+        coin: 0, 
+        inPosition: false, 
+        entryPrice: 0,
+        lastEquity: initialCapitalPerTicker // Track daily equity per ticker
+    };
+});
+
+// 4. Processing Loop
+const trades = [];
+let totalTrades = 0;
+let winningTrades = 0;
+let totalProfit = 0;
+let totalLoss = 0;
+
+// To track daily portfolio value, we need to know when a "day" ends.
+// Assumption: Input is sorted by Date -> Ticker.
+// We will collect equity snapshots.
+
+const loopCount = Math.min(originalItems.length, sentiments.length);
+
+for (let i = 0; i < loopCount; i++) {
+    const d = originalItems[i];
+    const s = sentiments[i];
+    const ticker = d.ticker;
+    const price = parseFloat(d.price || d.close);
+    
+    const wallet = portfolio[ticker];
+    if (!wallet) continue;
+
+    // --- Sentiment ---
+    let best = { score: 0, label: 'NEUTRAL' };
+    if (Array.isArray(s)) best = s.reduce((p, c) => (c.score > p.score ? c : p), {score: 0});
+    else if (s && s.label) best = s;
+    
+    const sentimentLabel = best.label || 'NEUTRAL';
+    const sentimentScore = best.score || 0;
+
+    // --- Signal ---
+    let decision = 'hold';
+    let reason = `News: ${sentimentLabel} (${(sentimentScore*100).toFixed(0)}%)`;
+    const rsi = parseFloat(d.rsi) || 50;
+
+    if (rsi < 30) { decision = 'buy'; reason = 'Oversold'; }
+    else if (rsi > 70) { decision = 'sell'; reason = 'Overbought'; }
+    else {
+      if (sentimentLabel === 'POSITIVE' && sentimentScore > 0.85) { decision = 'buy'; reason = 'Positive News'; }
+      else if (sentimentLabel === 'NEGATIVE' && sentimentScore > 0.85) { decision = 'sell'; reason = 'Negative News'; }
     }
-  ],
-  "connections": {
-    "Start Bot": {
-      "main": [
-        [
-          { "node": "1. Load Market Data", "type": "main", "index": 0 },
-          { "node": "2. Load News Data", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "1. Load Market Data": { "main": [[{ "node": "Parse CSV (Market)" }]] },
-    "2. Load News Data": { "main": [[{ "node": "Parse CSV (News)" }]] },
-    "Parse CSV (Market)": {
-      "main": [[{ "node": "Wait for Both", "type": "main", "index": 0 }]]
-    },
-    "Parse CSV (News)": { "main": [[{ "node": "Group News" }]] },
-    "Group News": {
-      "main": [[{ "node": "Wait for Both", "type": "main", "index": 1 }]]
-    },
-    "Wait for Both": { "main": [[{ "node": "3. Merge Daily Data" }]] },
-    "3. Merge Daily Data": { "main": [[{ "node": "4. Prepare Batch" }]] },
-    "4. Prepare Batch": {
-      "main": [[{ "node": "5. HF Sentiment (Single Batch)" }]]
-    },
-    "5. HF Sentiment (Single Batch)": {
-      "main": [[{ "node": "6. Final Logic & Metrics" }]]
-    },
-    "6. Final Logic & Metrics": { "main": [[{ "node": "7. Export CSV" }]] }
-  },
-  "pinData": {}
+
+    // --- Execution ---
+    let action = 'none';
+    let pnl = 0;
+
+    if (decision === 'buy' && !wallet.inPosition) {
+        wallet.entryPrice = price;
+        wallet.coin = wallet.balance / price;
+        wallet.balance = 0;
+        wallet.inPosition = true;
+        action = 'buy';
+        
+    } else if (decision === 'sell' && wallet.inPosition) {
+        const sellValue = wallet.coin * price;
+        pnl = sellValue - (wallet.coin * wallet.entryPrice);
+        
+        if (pnl > 0) {
+            winningTrades++;
+            totalProfit += pnl;
+        } else {
+            totalLoss += Math.abs(pnl);
+        }
+        
+        wallet.balance = sellValue;
+        wallet.coin = 0;
+        wallet.inPosition = false;
+        totalTrades++;
+        action = 'sell';
+    }
+
+    // --- Update Ticker Equity Snapshot ---
+    // Mark to Market: Even if holding, calculate current value
+    const currentTickerEquity = wallet.inPosition ? (wallet.coin * price) : wallet.balance;
+    wallet.lastEquity = currentTickerEquity; 
+
+    // Record Log
+    trades.push({
+        date: d.date,
+        ticker: ticker,
+        price: price,
+        decision: decision,
+        action: action,
+        pnl: pnl !== 0 ? pnl.toFixed(2) : '',
+        rsi,
+        sentiment_label: sentimentLabel,
+        sentiment_score: sentimentScore.toFixed(2),
+        equity: currentTickerEquity.toFixed(2),
+        reason
+    });
 }
+
+// 5. Calculate Daily Portfolio Equity Curve
+// Group trades by date to get the sum of ALL tickers' equity at that date.
+// Problem: If a ticker doesn't trade on a date (no data?), we should use its last known equity.
+// But assuming dense data (all tickers have data for all days).
+
+const dateEquityMap = {};
+const uniqueDates = [...new Set(trades.map(t => t.date))].sort();
+
+// To be precise: For each date, sum the equity of all tickers on that date.
+// The 'trades' array contains equity snapshot for that ticker on that date.
+trades.forEach(t => {
+    if (!dateEquityMap[t.date]) dateEquityMap[t.date] = 0;
+    dateEquityMap[t.date] += parseFloat(t.equity);
+});
+
+const equityCurve = uniqueDates.map(d => dateEquityMap[d]);
+// Add initial balance at start for calculation?
+// Better to just use daily closes.
+
+// 6. Calculate Metrics (Sharpe & MDD)
+let peak = -Infinity;
+let maxDrawdown = 0;
+const dailyReturns = [];
+
+// MDD on Portfolio Curve
+for (const eq of equityCurve) {
+    if (eq > peak) peak = eq;
+    const dd = (peak - eq) / peak;
+    if (dd > maxDrawdown) maxDrawdown = dd;
+}
+
+// Sharpe Ratio
+for (let i = 1; i < equityCurve.length; i++) {
+    const prev = equityCurve[i-1];
+    const curr = equityCurve[i];
+    const ret = prev !== 0 ? (curr - prev) / prev : 0;
+    dailyReturns.push(ret);
+}
+
+const avgDailyRet = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length || 0;
+const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - avgDailyRet, 2), 0) / dailyReturns.length || 0;
+const stdDev = Math.sqrt(variance);
+const sharpeRatio = stdDev !== 0 ? (avgDailyRet / stdDev) * Math.sqrt(365) : 0;
+
+// Final Stats
+const finalTotalEquity = equityCurve[equityCurve.length - 1] || 10000;
+const totalReturn = ((finalTotalEquity - 10000) / 10000) * 100;
+const winRate = totalTrades > 0 ? ((winningTrades / totalTrades) * 100) : 0;
+const profitFactor = totalLoss > 0 ? (totalProfit / totalLoss) : (totalProfit > 0 ? 999 : 0);
+
+return [{
+  json: {
+    metric_summary: {
+      "Total Trades": totalTrades,
+      "Win Rate": winRate.toFixed(2) + "%",
+      "Profit Factor": profitFactor.toFixed(2),
+      "Total Return": totalReturn.toFixed(2) + "%",
+      "Sharpe Ratio": sharpeRatio.toFixed(2),
+      "Max Drawdown": "-" + (maxDrawdown * 100).toFixed(2) + "%",
+      "Final Balance": "$" + finalTotalEquity.toFixed(2)
+    },
+    trade_log: trades
+  }
+}];
