@@ -65,7 +65,7 @@ graph TD
     style Sell fill:#f8d7da,stroke:#dc3545,stroke-width:2px
     style Sell2 fill:#f8d7da,stroke:#dc3545,stroke-width:2px
     style Hold fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
-
+```
 
 ---
 
