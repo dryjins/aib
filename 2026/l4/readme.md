@@ -43,26 +43,26 @@ This is the default logic currently implemented in the workflow.
 
 ```mermaid
 graph TD
-    Start([Input: Price, RSI, News]) --> CheckRSI_Low{RSI < 30?}
+    Start[Input: Price, RSI, News] --> CheckRSI_Low{RSI < 30?}
 
     %% 1. Technical Analysis (RSI)
-    CheckRSI_Low -- Yes --> Buy[BUY (Reason: Oversold)]
+    CheckRSI_Low -- Yes --> Buy1[BUY: Oversold]
     CheckRSI_Low -- No --> CheckRSI_High{RSI > 70?}
 
-    CheckRSI_High -- Yes --> Sell[SELL (Reason: Overbought)]
-    CheckRSI_High -- No --> CheckSentiment_Pos{News: POSITIVE<br/>AND Score > 0.85?}
+    CheckRSI_High -- Yes --> Sell1[SELL: Overbought]
+    CheckRSI_High -- No --> CheckSentiment_Pos{News POSITIVE & Score > 0.85?}
 
     %% 2. Sentiment Analysis (News)
-    CheckSentiment_Pos -- Yes --> Buy2[BUY (Reason: Positive News)]
-    CheckSentiment_Pos -- No --> CheckSentiment_Neg{News: NEGATIVE<br/>AND Score > 0.85?}
+    CheckSentiment_Pos -- Yes --> Buy2[BUY: Positive News]
+    CheckSentiment_Pos -- No --> CheckSentiment_Neg{News NEGATIVE & Score > 0.85?}
 
-    CheckSentiment_Neg -- Yes --> Sell2[SELL (Reason: Negative News)]
+    CheckSentiment_Neg -- Yes --> Sell2[SELL: Negative News]
     CheckSentiment_Neg -- No --> Hold[HOLD]
 
     %% Color Styling
-    style Buy fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Buy1 fill:#d4edda,stroke:#28a745,stroke-width:2px
     style Buy2 fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Sell fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Sell1 fill:#f8d7da,stroke:#dc3545,stroke-width:2px
     style Sell2 fill:#f8d7da,stroke:#dc3545,stroke-width:2px
     style Hold fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
 ```
