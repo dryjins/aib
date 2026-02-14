@@ -35,8 +35,9 @@ Combine the following elements to create buy/sell signals:
 
 ### 2. Implementation
 Modify the JavaScript code in the **`6. Final Logic & Metrics`** node in n8n.
-- Refine the `decision` logic (`buy` | `sell` | `hold`).
+- Refine the `decision` logic (`buy` | `sell`).
 - Implement complex conditions (e.g., "Buy only if Sentiment > 0.9 AND RSI < 40").
+- You need to remove the logic of hold!!
 
 ### Current Baseline Logic Flowchart
 This is the default logic currently implemented in the workflow.
